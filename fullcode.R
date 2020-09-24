@@ -88,5 +88,22 @@ dev.copy(png, file="plot5.png")
 dev.off()
 
 ##Graph6
-baltimore<-new_NEI %>% filter(fips=="24510")
+baltimore<- new_NEI %>% filter(fips=="24510")
+mv<- SCC[grep("Mobile.*Vehicle", SCC$EI.Sector), ]
+mv.scc<-unique(mv$SCC)
+mv.nei<- subset(baltimore, SCC %in% mv.scc)
+
+mv.nei<-merge(x=mv.nei, y=mv[, c("SCC","EI.Sector", "SCC.Level.Two", "SCC.Level.Three")], by="SCC")
+
+vtab<- mv.nei %>% group_by(year, SCC.Level.Two) %>% summarize(Total=sum(Emissions))
+totaltab<- vtab %>% group_by(year) %>% summarize(Total=sum(Total)) %>% mutate(SCC>Level.Two="Total")
+vtab<-rbind(vtab, totaltab)
+g5<-ggplot(vtab, aes(x=as.factor(year), y=Total,fill=as.factor(SCC.Level.Two))) +
+  geom_bar(stat="identity") +
+  facet_grid(.~SCC.Level.Two)+
+  xlab("Year")+
+  ylab("Total PM2.5 Emissions")+
+  theme(legend.position="bottom")+
+  guides(fill=guide_legend(title="Vehicle Source"))
+
 LA<- new_NEI %>% filter(fips=="06037")
