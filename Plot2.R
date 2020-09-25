@@ -15,3 +15,5 @@ sum2<- baltimore %>% group_by(yeardate) %>% summarize(Total=sum(Emissions))
 plot(sum2$yeardate, sum2$Total, type="l", xlab="Year", ylab="Total Emissions in Baltimore City")
 dev.copy(png, file="plot2.png")
 dev.off()
+
+##Using the graph, we can see that in Baltimore City, PM2.5 emissions have decreased overall, however there was a spike from 2002 to 2005
