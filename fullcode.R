@@ -5,24 +5,21 @@ SCC <- readRDS("Source_Classification_Code.rds")
 new_NEI<- NEI                                           ##to keep raw data untouched
 new_NEI$yeardate<- as.factor(NEI$year)
 
-##Graph1
+##Graph1: Have total emissions decreased in the US?
 sum1<-new_NEI %>% group_by(yeardate) %>% summarize(n=n(), Total=sum(Emissions))
-g1<-plot(sum1$yeardate, sum1$Total, type="l", xlab="Year", )
-g1
+plot(sum1$yeardate, sum1$Total, type="l", xlab="Year", ylab="Total Emissions in US")
 dev.copy(png,file="plot1.png")
 dev.off()
 
-##Graph2: Total emissions from PM2.5 for Maryland
+##Graph2: Have total emissions decreased from Baltimore City Maryland?
 ##library(dplyr, tidyverse)
-##library(dplyr)
 ##NEI<-readRDS("summarySCC_PM25.rds")
 ##SCC <- readRDS("Source_Classification_Code.rds")
 ##new_NEI<- NEI                                           ##to keep raw data untouched
 ##new_NEI$yeardate<- as.factor(NEI$year)
 baltimore<-new_NEI %>% filter(fips=="24510")
 sum2<- baltimore %>% group_by(yeardate) %>% summarize(Total=sum(Emissions))
-g2<- plot(sum2$yeardate, sum2$Total, type="l", xlab="Year")
-g2
+plot(sum2$yeardate, sum2$Total, type="l", xlab="Year", ylab="Total Emissions in Baltimore City")
 dev.copy(png, file="plot2.png")
 dev.off()
 
@@ -45,12 +42,11 @@ dev.copy(png, file="plot3.png")
 dev.off()
 
 ##Graph 4
-##library(dplyr, ggplot2)
+##library(dplyr, ggplot2, tidyverse)
 ##NEI<-readRDS("summarySCC_PM25.rds")
 ##SCC <- readRDS("Source_Classification_Code.rds")
 ##new_NEI<- NEI                                           ##to keep raw data untouched
 ##new_NEI$yeardate<- as.factor(NEI$year)
-library(tidyverse)
 coal<-SCC[grep("Fuel Comb.*Coal", SCC$EI.Sector), ]         ##finds all intances of "Fuel Comb.....Coal" in SCC$E!.Sector column, returns a df of those rows
 coal.scc<-unique(coal$SCC)                                  ##find unique values/instances from the coal$SCC column
 coal.nei<-subset(NEI, SCC %in% coal.scc)                  ##takes the values from coal$SCC and matches to the NEI table
@@ -64,6 +60,7 @@ g4<- ggplot(coal.nei.all, aes(x=factor(year), y=Total, fill=type)) +
   xlab("Year") +
   ylab("Total Tons of Emissions")
 dev.copy(png,file="plot4.png")
+dev.off()
 
 ##Graph5
 ##library(dplyr, ggplot2, tidyverse)
@@ -88,6 +85,13 @@ dev.copy(png, file="plot5.png")
 dev.off()
 
 ##Graph6
+##library(dplyr, tidyverse)
+##library(dplyr)
+##NEI<-readRDS("summarySCC_PM25.rds")
+##SCC <- readRDS("Source_Classification_Code.rds")
+##new_NEI<- NEI                                           ##to keep raw data untouched
+##new_NEI$yeardate<- as.factor(NEI$year)
+
 baltimore<- new_NEI %>% filter(fips=="24510")
 mv<- SCC[grep("Mobile.*Vehicle", SCC$EI.Sector), ]
 mv.scc<-unique(mv$SCC)
@@ -97,7 +101,7 @@ mv.nei<-merge(x=mv.nei, y=mv[, c("SCC","EI.Sector", "SCC.Level.Two", "SCC.Level.
 
 vtab<- mv.nei %>% group_by(year, SCC.Level.Two) %>% summarize(Total=sum(Emissions))
 totaltab<- vtab %>% group_by(year) %>% summarize(Total=sum(Total)) %>% mutate(SCC>Level.Two="Total")
-vtab<-rbind(vtab, totaltab)
+vtab<-rbind(vtab, totaltab) %<% mutate(Location="Baltimore City")
 g5<-ggplot(vtab, aes(x=as.factor(year), y=Total,fill=as.factor(SCC.Level.Two))) +
   geom_bar(stat="identity") +
   facet_grid(.~SCC.Level.Two)+
@@ -107,3 +111,28 @@ g5<-ggplot(vtab, aes(x=as.factor(year), y=Total,fill=as.factor(SCC.Level.Two))) 
   guides(fill=guide_legend(title="Vehicle Source"))
 
 LA<- new_NEI %>% filter(fips=="06037")
+##mv<- SCC[grep("Mobile.*Vehicle", SCC$EI.Sector), ]
+##mv.scc<-unique(mv$SCC)                              We can use the same ones from Baltimore because its the same subset
+mv.la<- subset(LA, SCC %in% mv.scc)                   ##Use the subset from SCC onto LA now
+
+mv.la<-merge(x=mv.la, y=mv[, c("SCC","EI.Sector", "SCC.Level.Two", "SCC.Level.Three")], by="SCC")
+
+latab<- mv.la %>% group_by(year, SCC.Level.Two) %>% summarize(Total=sum(Emissions))
+latotal<- latab %>% group_by(year) %>% summarize(Total=sum(Total)) %>% 
+  mutate(SCC.Level.Two="Total")
+latab<-rbind(latab, latotal) %>% mutate(Location="LA County")
+all<-rbind(vtab,latab)
+
+all$year<-as.factor(all$year)
+all$source<-as.factor(all$SCC.Level.Two)
+all$Location<-as.factor(all$Location)
+
+g6<- ggplot(data=all, aes(x=year, y=Total, group=Location, col=Location ))+
+  geom_point() +
+  geom_line() +
+  facet_grid(SCC.Level.Two~.)+
+  theme(legend.position="bottom")+
+  ylab("PM2.5 Emission Totals")
+
+dev.copy(png, file="plot6.png")
+dev.off()
